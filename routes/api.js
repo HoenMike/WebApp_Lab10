@@ -34,6 +34,21 @@ router.get("/courses", async (req, res) => {
   }
 });
 
+router.get("/course/:name", async (req, res) => {
+  const { name } = req.params;
+  try {
+    const QUERY = "SELECT * FROM course WHERE name = ?";
+    const [rows] = await pool.query(QUERY, [name]);
+    if (rows.length === 0) {
+      res.status(404).send("Course not found");
+    } else {
+      res.status(200).json(rows[0]);
+    }
+  } catch (error) {
+    res.status(500).send("Error fetching course");
+  }
+});
+
 router.put("/course/:id", async (req, res) => {
   const { id } = req.params;
   const { course_level_id, name, name_vn, credit_theory, credit_lab, description } = req.body;
@@ -86,6 +101,21 @@ router.get("/programs", async (req, res) => {
     res.status(200).json(rows);
   } catch (error) {
     res.status(500).send("Error fetching programs");
+  }
+});
+
+router.get("/program/:name", async (req, res) => {
+  const { name } = req.params;
+  try {
+    const QUERY = "SELECT * FROM program WHERE name = ?";
+    const [rows] = await pool.query(QUERY, [name]);
+    if (rows.length === 0) {
+      res.status(404).send("Program not found");
+    } else {
+      res.status(200).json(rows[0]);
+    }
+  } catch (error) {
+    res.status(500).send("Error fetching program");
   }
 });
 
