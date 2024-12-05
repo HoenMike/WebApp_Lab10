@@ -155,7 +155,7 @@ router.delete("/program/:id", async (req, res) => {
 });
 
 // Course Program
-router.post("/program", async (req, res) => {
+router.post("/course_program", async (req, res) => {
   const { name, duration, version, major_id, program_type_id, valid_from } = req.body;
   try {
     const QUERY =
