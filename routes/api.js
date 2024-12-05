@@ -26,9 +26,24 @@ router.post("/course", async (req, res) => {
 });
 
 router.get("/courses", async (req, res) => {
+  const { filter, sort } = req.query;
+
   try {
-    const QUERY = "SELECT * FROM course";
-    const [rows] = await pool.query(QUERY);
+    let query = "SELECT * FROM course";
+    const queryParams = [];
+
+    // Apply filtering if provided
+    if (filter) {
+      query += " WHERE name LIKE ?";
+      queryParams.push(`%${filter}%`);
+    }
+
+    // Apply sorting if provided
+    if (sort) {
+      query += ` ORDER BY ${sort}`;
+    }
+
+    const [rows] = await pool.query(query, queryParams);
     res.status(200).json(rows);
   } catch (error) {
     res.status(500).send("Error fetching courses");
@@ -105,9 +120,24 @@ router.post("/program", async (req, res) => {
 });
 
 router.get("/programs", async (req, res) => {
+  const { filter, sort } = req.query;
+
   try {
-    const QUERY = "SELECT * FROM program";
-    const [rows] = await pool.query(QUERY);
+    let query = "SELECT * FROM program";
+    const queryParams = [];
+
+    // Apply filtering if provided
+    if (filter) {
+      query += " WHERE name LIKE ?";
+      queryParams.push(`%${filter}%`);
+    }
+
+    // Apply sorting if provided
+    if (sort) {
+      query += ` ORDER BY ${sort}`;
+    }
+
+    const [rows] = await pool.query(query, queryParams);
     res.status(200).json(rows);
   } catch (error) {
     res.status(500).send("Error fetching programs");
@@ -156,22 +186,30 @@ router.delete("/program/:id", async (req, res) => {
 
 // Course Program
 router.post("/course_program", async (req, res) => {
-  const { name, duration, version, major_id, program_type_id, valid_from } = req.body;
+  const { course_id, program_id, course_code, course_type_id } = req.body;
   try {
-    const QUERY =
-      "INSERT INTO program (name, duration, version, major_id, program_type_id, valid_from) VALUES (?, ?, ?, ?, ?, ?)";
-    const [result] = await pool.query(QUERY, [
-      name,
-      duration,
-      version,
-      major_id,
-      program_type_id,
-      valid_from,
-    ]);
-    res.status(201).json({ message: "Program created successfully", id: result.insertId });
+    // Check if course_id exists
+    const courseQuery = "SELECT id FROM course WHERE id = ?";
+    const [courseRows] = await pool.query(courseQuery, [course_id]);
+    if (courseRows.length === 0) {
+      return res.status(400).json({ message: "Invalid course_id" });
+    }
+
+    // Check if program_id exists
+    const programQuery = "SELECT id FROM program WHERE id = ?";
+    const [programRows] = await pool.query(programQuery, [program_id]);
+    if (programRows.length === 0) {
+      return res.status(400).json({ message: "Invalid program_id" });
+    }
+
+    // Insert into course_program
+    const insertQuery =
+      "INSERT INTO course_program (course_id, program_id, course_code, course_type_id) VALUES (?, ?, ?, ?)";
+    await pool.query(insertQuery, [course_id, program_id, course_code, course_type_id]);
+    res.status(201).json({ message: "Course Program created successfully" });
   } catch (error) {
-    console.error("Error creating program:", error);
-    res.status(500).send("Error creating program");
+    console.error("Error creating course program:", error);
+    res.status(500).send("Error creating course program");
   }
 });
 
@@ -181,6 +219,43 @@ router.get("/course_programs", async (req, res) => {
     const [rows] = await pool.query(QUERY);
     res.status(200).json(rows);
   } catch (error) {
+    res.status(500).send("Error fetching course programs");
+  }
+});
+
+router.get("/course_program/:program_name", async (req, res) => {
+  const { program_name } = req.params;
+  const { filter, sort } = req.query;
+
+  try {
+    // Fetch program_id based on program_name
+    const programQuery = "SELECT id FROM program WHERE name = ?";
+    const [programRows] = await pool.query(programQuery, [program_name]);
+    if (programRows.length === 0) {
+      return res.status(400).json({ message: "Invalid program_name" });
+    }
+    const program_id = programRows[0].id;
+
+    // Construct the base query
+    let query = "SELECT * FROM course_program WHERE program_id = ?";
+    const queryParams = [program_id];
+
+    // Apply filtering if provided
+    if (filter) {
+      query += " AND course_code LIKE ?";
+      queryParams.push(`%${filter}%`);
+    }
+
+    // Apply sorting if provided
+    if (sort) {
+      query += ` ORDER BY ${sort}`;
+    }
+
+    // Execute the query
+    const [rows] = await pool.query(query, queryParams);
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Error fetching course programs:", error);
     res.status(500).send("Error fetching course programs");
   }
 });
